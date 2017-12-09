@@ -19,7 +19,7 @@ limitations under the License.
     <parent>
         <artifactId>minifi-framework-bundle</artifactId>
         <groupId>org.apache.nifi.minifi</groupId>
-        <version>0.2.1-SNAPSHOT</version>
+        <version>0.2.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -41,12 +41,6 @@ limitations under the License.
         <dependency>
             <groupId>org.apache.nifi.minifi</groupId>
             <artifactId>minifi-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-standard-services-api-nar</artifactId>
-            <type>nar</type>
             <scope>provided</scope>
         </dependency>
 

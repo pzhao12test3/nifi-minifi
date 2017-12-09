@@ -23,7 +23,6 @@ Core Properties:
   administrative yield duration: 30 sec
   bored yield duration: 10 millis
   max concurrent threads: 1
-  variable registry properties: ''
 FlowFile Repository:
   partitions: 256
   checkpoint interval: 2 mins
@@ -40,7 +39,6 @@ Content Repository:
   always sync: false
 Provenance Repository:
   provenance rollover time: 1 min
-  implementation: org.apache.nifi.provenance.MiNiFiPersistentProvenanceRepository
 Component Status Repository:
   buffer size: 1440
   snapshot frequency: 1 min
@@ -127,4 +125,3 @@ Connections:
   flowfile expiration: 0 sec
   queue prioritizer class: org.apache.nifi.prioritizer.FirstInFirstOutPrioritizer
 Remote Process Groups: []
-NiFi Properties Overrides: {}

@@ -17,7 +17,7 @@
 
 package org.apache.nifi.minifi.toolkit.configuration.dto;
 
-import org.apache.nifi.minifi.commons.schema.RemotePortSchema;
+import org.apache.nifi.minifi.commons.schema.RemoteInputPortSchema;
 import org.apache.nifi.minifi.commons.schema.RemoteProcessGroupSchema;
 import org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupContentsDTO;
@@ -45,10 +45,9 @@ public class RemoteProcessGroupSchemaTest extends BaseSchemaTester<RemoteProcess
     private String testTimeout = "11 s";
     private String testYieldPeriod = "22 s";
     private String transportProtocol = "HTTP";
-    private String localNetworkInterface = "eth0";
 
     public RemoteProcessGroupSchemaTest() {
-        super(new RemoteProcessGroupSchemaFunction(new RemotePortSchemaFunction()), RemoteProcessGroupSchema::new);
+        super(new RemoteProcessGroupSchemaFunction(new RemoteInputPortSchemaFunction()), RemoteProcessGroupSchema::new);
         remoteInputPortSchemaTest = new RemoteInputPortSchemaTest();
     }
 
@@ -138,27 +137,13 @@ public class RemoteProcessGroupSchemaTest extends BaseSchemaTester<RemoteProcess
         assertDtoAndMapConstructorAreSame(0);
     }
 
-    @Test
-    public void testNoLocalNetworkInterface() {
-        dto.setLocalNetworkInterface(null);
-        map.remove(RemoteProcessGroupSchema.LOCAL_NETWORK_INTERFACE_KEY);
-        assertDtoAndMapConstructorAreSame(0);
-    }
-
-    @Test
-    public void testLocalNetworkInterface() {
-        dto.setLocalNetworkInterface(localNetworkInterface);
-        map.put(RemoteProcessGroupSchema.LOCAL_NETWORK_INTERFACE_KEY, localNetworkInterface);
-        assertDtoAndMapConstructorAreSame(0);
-    }
-
     @Override
     public void assertSchemaEquals(RemoteProcessGroupSchema one, RemoteProcessGroupSchema two) {
         assertEquals(one.getName(), two.getName());
         assertEquals(one.getUrl(), two.getUrl());
 
-        List<RemotePortSchema> oneInputPorts = one.getInputPorts();
-        List<RemotePortSchema> twoInputPorts = two.getInputPorts();
+        List<RemoteInputPortSchema> oneInputPorts = one.getInputPorts();
+        List<RemoteInputPortSchema> twoInputPorts = two.getInputPorts();
         if (oneInputPorts == null) {
             assertNull(twoInputPorts);
         } else {
@@ -172,6 +157,5 @@ public class RemoteProcessGroupSchemaTest extends BaseSchemaTester<RemoteProcess
         assertEquals(one.getComment(), two.getComment());
         assertEquals(one.getTimeout(), two.getTimeout());
         assertEquals(one.getYieldPeriod(), two.getYieldPeriod());
-        assertEquals(one.getLocalNetworkInterface(), two.getLocalNetworkInterface());
     }
 }

@@ -17,28 +17,23 @@
 
 package org.apache.nifi.minifi.bootstrap.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.stream.Collectors;
+import org.apache.nifi.minifi.bootstrap.configuration.ConfigurationChangeException;
+import org.apache.nifi.minifi.commons.schema.ConfigSchema;
+import org.apache.nifi.minifi.commons.schema.ConnectionSchema;
+import org.apache.nifi.minifi.commons.schema.ControllerServiceSchema;
+import org.apache.nifi.minifi.commons.schema.FunnelSchema;
+import org.apache.nifi.minifi.commons.schema.PortSchema;
+import org.apache.nifi.minifi.commons.schema.ProcessGroupSchema;
+import org.apache.nifi.minifi.commons.schema.ProcessorSchema;
+import org.apache.nifi.minifi.commons.schema.RemoteInputPortSchema;
+import org.apache.nifi.minifi.commons.schema.RemoteProcessGroupSchema;
+import org.apache.nifi.minifi.commons.schema.common.StringUtil;
+import org.apache.nifi.minifi.commons.schema.serialization.SchemaLoader;
+import org.junit.Before;
+import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -47,27 +42,21 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.nifi.minifi.bootstrap.configuration.ConfigurationChangeException;
-import org.apache.nifi.minifi.bootstrap.exception.InvalidConfigurationException;
-import org.apache.nifi.minifi.commons.schema.ConfigSchema;
-import org.apache.nifi.minifi.commons.schema.ConnectionSchema;
-import org.apache.nifi.minifi.commons.schema.ControllerServiceSchema;
-import org.apache.nifi.minifi.commons.schema.FunnelSchema;
-import org.apache.nifi.minifi.commons.schema.PortSchema;
-import org.apache.nifi.minifi.commons.schema.ProcessGroupSchema;
-import org.apache.nifi.minifi.commons.schema.ProcessorSchema;
-import org.apache.nifi.minifi.commons.schema.RemotePortSchema;
-import org.apache.nifi.minifi.commons.schema.RemoteProcessGroupSchema;
-import org.apache.nifi.minifi.commons.schema.common.StringUtil;
-import org.apache.nifi.minifi.commons.schema.exception.SchemaLoaderException;
-import org.apache.nifi.minifi.commons.schema.serialization.SchemaLoader;
-import org.junit.Before;
-import org.junit.Test;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 public class ConfigTransformerTest {
     public static final Map<String, Integer> PG_ELEMENT_ORDER_MAP = generateOrderMap(
@@ -143,306 +132,6 @@ public class ConfigTransformerTest {
     @Test
     public void testRpgProxyPassTransform() throws Exception {
         testConfigFileTransform("InvokeHttpMiNiFiProxyPasswordTemplateTest.yml");
-    }
-
-    @Test
-    public void testRpgOutputPort() throws Exception {
-        testConfigFileTransform("SimpleRPGToLogAttributes.yml");
-    }
-
-    @Test
-    public void testNifiPropertiesNoOverrides() throws IOException, ConfigurationChangeException, SchemaLoaderException {
-        Properties pre216Properties = new Properties();
-        try (InputStream pre216PropertiesStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-216/nifi.properties.before")) {
-            pre216Properties.load(pre216PropertiesStream);
-        }
-        pre216Properties.setProperty(ConfigTransformer.NIFI_VERSION_KEY, ConfigTransformer.NIFI_VERSION);
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (InputStream configStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-216/config.yml")) {
-            ConfigTransformer.writeNiFiProperties(SchemaLoader.loadConfigSchemaFromYaml(configStream), outputStream);
-        }
-        Properties properties = new Properties();
-        properties.load(new ByteArrayInputStream(outputStream.toByteArray()));
-
-        for (String name : pre216Properties.stringPropertyNames()) {
-            assertEquals("Property key " + name + " doesn't match.", pre216Properties.getProperty(name), properties.getProperty(name));
-        }
-    }
-
-    @Test
-    public void testNifiPropertiesOverrides() throws IOException, ConfigurationChangeException, SchemaLoaderException {
-        Properties pre216Properties = new Properties();
-        try (InputStream pre216PropertiesStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-216/nifi.properties.before")) {
-            pre216Properties.load(pre216PropertiesStream);
-        }
-        pre216Properties.setProperty(ConfigTransformer.NIFI_VERSION_KEY, ConfigTransformer.NIFI_VERSION);
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (InputStream configStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-216/configOverrides.yml")) {
-            ConfigSchema configSchema = SchemaLoader.loadConfigSchemaFromYaml(configStream);
-            assertTrue(configSchema.getNifiPropertiesOverrides().size() > 0);
-            for (Map.Entry<String, String> entry : configSchema.getNifiPropertiesOverrides().entrySet()) {
-                pre216Properties.setProperty(entry.getKey(), entry.getValue());
-            }
-            ConfigTransformer.writeNiFiProperties(configSchema, outputStream);
-        }
-        Properties properties = new Properties();
-        properties.load(new ByteArrayInputStream(outputStream.toByteArray()));
-
-        for (String name : pre216Properties.stringPropertyNames()) {
-            assertEquals("Property key " + name + " doesn't match.", pre216Properties.getProperty(name), properties.getProperty(name));
-        }
-    }
-
-    @Test
-    public void testNifiPropertiesVariableRegistry() throws IOException, ConfigurationChangeException, SchemaLoaderException {
-        Properties initialProperties = new Properties();
-        try (InputStream pre216PropertiesStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-277/nifi.properties")) {
-            initialProperties.load(pre216PropertiesStream);
-        }
-        initialProperties.setProperty(ConfigTransformer.NIFI_VERSION_KEY, ConfigTransformer.NIFI_VERSION);
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (InputStream configStream = ConfigTransformerTest.class.getClassLoader().getResourceAsStream("MINIFI-277/config.yml")) {
-            ConfigSchema configSchema = SchemaLoader.loadConfigSchemaFromYaml(configStream);
-            ConfigTransformer.writeNiFiProperties(configSchema, outputStream);
-        }
-        Properties properties = new Properties();
-        properties.load(new ByteArrayInputStream(outputStream.toByteArray()));
-
-        for (String name : initialProperties.stringPropertyNames()) {
-            assertEquals("Property key " + name + " doesn't match.", initialProperties.getProperty(name), properties.getProperty(name));
-        }
-    }
-
-    @Test
-    public void doesTransformFile() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformV1File() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-v1.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformInputStream() throws Exception {
-        File inputFile = new File("./src/test/resources/config.yml");
-        ConfigTransformer.transformConfigFile(new FileInputStream(inputFile), "./target/");
-
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnDefaultFile() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/default.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnMultipleProcessors() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-multiple-processors.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnMultipleRemoteProcessGroups() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-multiple-RPGs.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnMultipleInputPorts() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-multiple-input-ports.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnMinimal() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-minimal.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnProvenanceRepository() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-provenance-repository.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        String nifi = FileUtils.readFileToString(nifiPropertiesFile, Charset.defaultCharset());
-        assertTrue(nifi.contains("nifi.provenance.repository.implementation=org.apache.nifi.provenance.MiNiFiPersistentProvenanceRepository"));
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void doesTransformOnCustomProvenanceRepository() throws Exception {
-        ConfigTransformer.transformConfigFile("./src/test/resources/config-provenance-custom-repository.yml", "./target/");
-        File nifiPropertiesFile = new File("./target/nifi.properties");
-
-        assertTrue(nifiPropertiesFile.exists());
-        assertTrue(nifiPropertiesFile.canRead());
-
-        String nifi = FileUtils.readFileToString(nifiPropertiesFile, Charset.defaultCharset());
-        assertTrue(nifi.contains("nifi.provenance.repository.implementation=org.apache.nifi.provenance.CustomProvenanceRepository"));
-
-        nifiPropertiesFile.deleteOnExit();
-
-        File flowXml = new File("./target/flow.xml.gz");
-        assertTrue(flowXml.exists());
-        assertTrue(flowXml.canRead());
-
-        flowXml.deleteOnExit();
-    }
-
-    @Test
-    public void handleTransformInvalidFile() throws Exception {
-        try {
-            ConfigTransformer.transformConfigFile("./src/test/resources/config-invalid.yml", "./target/");
-            fail("Invalid configuration file was not detected.");
-        } catch (SchemaLoaderException e){
-            assertEquals("Provided YAML configuration is not a Map", e.getMessage());
-        }
-    }
-
-    @Test
-    public void handleTransformMalformedField() throws Exception {
-        try {
-            ConfigTransformer.transformConfigFile("./src/test/resources/config-malformed-field.yml", "./target/");
-            fail("Invalid configuration file was not detected.");
-        } catch (InvalidConfigurationException e){
-            assertEquals("Failed to transform config file due to:['threshold' in section 'Swap' because it is found but could not be parsed as a Number]", e.getMessage());
-        }
-    }
-
-    @Test
-    public void handleTransformEmptyFile() throws Exception {
-        try {
-            ConfigTransformer.transformConfigFile("./src/test/resources/config-empty.yml", "./target/");
-            fail("Invalid configuration file was not detected.");
-        } catch (SchemaLoaderException e){
-            assertEquals("Provided YAML configuration is not a Map", e.getMessage());
-        }
-    }
-
-    @Test
-    public void handleTransformFileMissingRequiredField() throws Exception {
-        try {
-            ConfigTransformer.transformConfigFile("./src/test/resources/config-missing-required-field.yml", "./target/");
-            fail("Invalid configuration file was not detected.");
-        } catch (InvalidConfigurationException e){
-            assertEquals("Failed to transform config file due to:['class' in section 'Processors' because it was not found and it is required]", e.getMessage());
-        }
-    }
-
-    @Test
-    public void handleTransformFileMultipleProblems() throws Exception {
-        try {
-            ConfigTransformer.transformConfigFile("./src/test/resources/config-multiple-problems.yml", "./target/");
-            fail("Invalid configuration file was not detected.");
-        } catch (InvalidConfigurationException e){
-            assertEquals("Failed to transform config file due to:['class' in section 'Processors' because it was not found and it is required], " +
-                    "['scheduling strategy' in section 'Provenance Reporting' because it is not a valid scheduling strategy], " +
-                    "['source name' in section 'Connections' because it was not found and it is required]", e.getMessage());
-        }
     }
 
     public void testConfigFileTransform(String configFile) throws Exception {
@@ -551,17 +240,11 @@ public class ConfigTransformerTest {
         NodeList inputPortElements = (NodeList) xPathFactory.newXPath().evaluate("inputPort", element, XPathConstants.NODESET);
         assertEquals(remoteProcessingGroupSchema.getInputPorts().size(), inputPortElements.getLength());
         for (int i = 0; i < inputPortElements.getLength(); i++) {
-            testRemotePort((Element) inputPortElements.item(i), remoteProcessingGroupSchema.getInputPorts().get(i));
-        }
-
-        NodeList outputPortElements = (NodeList) xPathFactory.newXPath().evaluate("outputPort", element, XPathConstants.NODESET);
-        assertEquals(remoteProcessingGroupSchema.getOutputPorts().size(), outputPortElements.getLength());
-        for (int i = 0; i < outputPortElements.getLength(); i++) {
-            testRemotePort((Element) outputPortElements.item(i), remoteProcessingGroupSchema.getOutputPorts().get(i));
+            testRemoteInputPort((Element) inputPortElements.item(i), remoteProcessingGroupSchema.getInputPorts().get(i));
         }
     }
 
-    private void testRemotePort(Element element, RemotePortSchema remoteInputPortSchema) throws XPathExpressionException {
+    private void testRemoteInputPort(Element element, RemoteInputPortSchema remoteInputPortSchema) throws XPathExpressionException {
         assertEquals(remoteInputPortSchema.getId(), getText(element, "id"));
         assertEquals(remoteInputPortSchema.getName(), getText(element, "name"));
         assertEquals(remoteInputPortSchema.getComment(), getText(element, "comment"));
@@ -610,7 +293,7 @@ public class ConfigTransformerTest {
             Element item = (Element) propertyElements.item(i);
             properties.put(getText(item, "name"), getText(item, "value"));
         }
-        assertEquals(expected.entrySet().stream().collect(Collectors.toMap(Map.Entry<String, Object>::getKey, e -> nullToEmpty(e.getValue()))), properties);
+        assertEquals(expected.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> nullToEmpty(e.getValue()))), properties);
     }
 
     private String getText(Element element, String path) throws XPathExpressionException {

@@ -104,13 +104,8 @@ Option | Description
 ------ | -----------
 nifi.minifi.notifier.ingestors.pull.http.hostname | Hostname on which to pull configurations from
 nifi.minifi.notifier.ingestors.pull.http.port | Port on which to pull configurations from
-nifi.minifi.notifier.ingestors.pull.http.proxy.hostname | Proxy server hostname
-nifi.minifi.notifier.ingestors.pull.http.proxy.port | Proxy server port
-nifi.minifi.notifier.ingestors.pull.http.proxy.username | Proxy username
-nifi.minifi.notifier.ingestors.pull.http.proxy.password | Proxy password
 nifi.minifi.notifier.ingestors.pull.http.path | Path on which to pull configurations from
 nifi.minifi.notifier.ingestors.pull.http.period.ms | Period on which to pull configurations from, defaults to 5 minutes if not set.
-nifi.minifi.notifier.ingestors.pull.http.query | Querystring value for the URL
 nifi.minifi.notifier.ingestors.pull.http.use.etag | If the destination server is set up with cache control ability and utilizes an "ETag" header, then this should be set to true to utilize it. Very simply, the Ingestor remembers the "ETag" of the last successful pull (returned 200) then uses that "ETag" in a "If-None-Match" header on the next request.
 nifi.minifi.notifier.ingestors.pull.http.connect.timeout.ms | Sets the connect timeout for new connections. A value of 0 means no timeout, otherwise values must be a positive whole number in milliseconds.
 nifi.minifi.notifier.ingestors.pull.http.read.timeout.ms | Sets the read timeout for new connections. A value of 0 means no timeout, otherwise values must be a positive whole number in milliseconds.
@@ -234,8 +229,7 @@ Option | Description
 ------ | -----------
 health | The connections's queued bytes and queued FlowFile count.
 bulletins | A list of all the current bulletins (if there are any).
-inputPorts | A list of every input port for this RPG and their status. Their status includes its name, whether the target exists and whether it's currently running.
-outputPorts | A list of every output port for this RPG and their status. Their status includes its name, whether the target exists and whether it's currently running.
+inputPorts | A list of every input port for this RPG and their status. Their status includes it's name, whether the target exit and whether it's currently running.
 stats | The current stats of the RPG. This includes the active threads, sent content size and count.
 
 An example query to get the health, bulletins, input ports and stats of all the RPGS is below.
@@ -332,7 +326,7 @@ The config.yml in the _conf_ directory is the main configuration file for contro
 and follows the YAML format laid out [here](http://www.yaml.org/).
 
 Alternatively, the MiNiFi Toolkit Converter can aid in creating a config.yml from a generated template exported from a NiFi instance.  This
-tool can be downloaded from https://nifi.apache.org/minifi/download.html under the `MiNiFi Toolkit Binaries` section.  Information on the toolkit's usage is
+tool can be downloaded from http://nifi.apache.org/minifi/download.html under the `MiNiFi Toolkit Binaries` section.  Information on the toolkit's usage is
 available at https://nifi.apache.org/minifi/minifi-toolkit.html.
 
 **Note:** Values for periods of time and data sizes must include the unit of measure,
@@ -355,8 +349,6 @@ parses and upconverts to the current version without issue.
 ### Version 2 -> Version 3 changes
 1. Added support for Controller Services.
 2. Added support for Site-To-Site over proxy.
-3. Added support for overriding nifi.properties values
-4. Added support for Output Ports to Remote Process Groups
 
 ## Flow Controller
 
@@ -428,7 +420,6 @@ always sync                       | If set to _true_, any change to the reposito
 *Property*                        | *Description*
 --------------------------------  | -------------
 provenance rollover time          | The amount of time to wait before rolling over the latest data provenance information so that it is available to be accessed by components. The default value is 1 min.
-implementation                    | The implementation of `ProvenanceRepository` to use. The default value is `org.apache.nifi.provenance.MiNiFiPersistentProvenanceRepository`.
 
 ## Component Status Repository
 
@@ -605,19 +596,17 @@ proxy host         | The hostname of the proxy server
 proxy port         | The port to connect to on the proxy server
 proxy user         | The user name on the proxy server
 proxy password     | The password for the proxy server
-Input Ports        | The Input Ports for this Remote Process Group (See below)
-Output Ports       | The Output Ports for this Remote Process Group (See below)
 
 
-#### Input/Output Ports Subsection
+#### Input Ports Subsection
 
-When connecting via Site to Site, MiNiFi needs to know which input or output port to communicate to of the core NiFi instance. These properties designate and configure communication with that port.
+When connecting via Site to Site, MiNiFi needs to know which input port to communicate to of the core NiFi instance. These properties designate and configure communication with that port.
 
 *Property*           | *Description*
 -------------------- | -------------
-id                   | The id of the port as it exists on the core NiFi instance. To get this information access the UI of the core instance, right click the port that is desired to be connect to and select "configure". The id of the port should under the "Id" section.
-name                 | The name of the port as it exists on the core NiFi instance. To get this information access the UI of the core instance, right click the port that is desired to be connect to and select "configure". The name of the port should under the "Port name" section.
-comments:            | A comment about the Port. This is not used for any underlying implementation but solely for the users of this configuration and MiNiFi agent.
+id                   | The id of the input port as it exists on the core NiFi instance. To get this information access the UI of the core instance, right the input port that is desired to be connect to and select "configure". The id of the port should under the "Id" section.
+name                 | The name of the input port as it exists on the core NiFi instance. To get this information access the UI of the core instance, right the input port that is desired to be connect to and select "configure". The id of the port should under the "Port name" section.
+comments:            | A comment about the Input Port. This is not used for any underlying implementation but solely for the users of this configuration and MiNiFi agent.
 max concurrent tasks | The number of tasks that this port should be scheduled for at maximum.
 use compression      | Whether or not compression should be used when communicating with the port. This is a boolean value of either "true" or "false"
 
@@ -638,29 +627,6 @@ timeout              | How long MiNiFi should wait before timing out the connect
 batch size           | Specifies how many records to send in a single batch, at most. This should be significantly above the expected amount of records generated between scheduling. If it is not, then there is the potential for the Provenance reporting to lag behind event generation and never catch up.
 
 **Note:** In order to send via HTTPS, the "Security Properties" must be fully configured. A StandardSSLContextService will be made automatically with the ID "SSL-Context-Service" and used by the Provenance Reporting.
-
-## NiFi Properties Overrides
-
-This is a yaml map that contains values to be put into nifi.properties.  This will supercede any hardcoded or other schema values that are substituted into nifi.properties file.
-
-### Example NiFi Properties Overrides
-
-```yaml
-NiFi Properties Overrides:
-  nifi.flowfile.repository.directory: ./flowfile_repository_override
-  nifi.content.repository.directory.default: ./content_repository_override
-  nifi.database.directory: ./database_repository_override
-```
-
-# Running as a Windows Service
-
-MiNiFi can run as a Windows service. To do so, you must modify the `conf/bootstrap.conf` to set absolute paths for some properties. The properties are:
-
-* `lib.dir`
-* `conf.dir`
-* `nifi.minifi.config`
-
-You can now install the MiNiFi service by running the `install-service.bat` script. To remove the service run the `delete-service.bat` file. 
 
 # Example Config File
 
