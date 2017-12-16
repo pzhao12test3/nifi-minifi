@@ -17,7 +17,7 @@
 
 package org.apache.nifi.minifi.toolkit.configuration.dto;
 
-import org.apache.nifi.minifi.commons.schema.RemotePortSchema;
+import org.apache.nifi.minifi.commons.schema.RemoteInputPortSchema;
 import org.apache.nifi.minifi.commons.schema.RemoteProcessGroupSchema;
 import org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupContentsDTO;
@@ -31,10 +31,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class RemoteProcessGroupSchemaFunction implements Function<RemoteProcessGroupDTO, RemoteProcessGroupSchema> {
-    private final RemotePortSchemaFunction remotePortSchemaFunction;
+    private final RemoteInputPortSchemaFunction remoteInputPortSchemaFunction;
 
-    public RemoteProcessGroupSchemaFunction(RemotePortSchemaFunction remotePortSchemaFunction) {
-        this.remotePortSchemaFunction = remotePortSchemaFunction;
+    public RemoteProcessGroupSchemaFunction(RemoteInputPortSchemaFunction remoteInputPortSchemaFunction) {
+        this.remoteInputPortSchemaFunction = remoteInputPortSchemaFunction;
     }
 
     @Override
@@ -49,15 +49,8 @@ public class RemoteProcessGroupSchemaFunction implements Function<RemoteProcessG
             Set<RemoteProcessGroupPortDTO> inputPorts = contents.getInputPorts();
             if (inputPorts != null) {
                 map.put(CommonPropertyKeys.INPUT_PORTS_KEY, inputPorts.stream()
-                        .map(remotePortSchemaFunction)
-                        .map(RemotePortSchema::toMap)
-                        .collect(Collectors.toList()));
-            }
-            Set<RemoteProcessGroupPortDTO> outputPorts = contents.getOutputPorts();
-            if (outputPorts != null) {
-                map.put(CommonPropertyKeys.OUTPUT_PORTS_KEY, outputPorts.stream()
-                        .map(remotePortSchemaFunction)
-                        .map(RemotePortSchema::toMap)
+                        .map(remoteInputPortSchemaFunction)
+                        .map(RemoteInputPortSchema::toMap)
                         .collect(Collectors.toList()));
             }
         }
@@ -70,7 +63,6 @@ public class RemoteProcessGroupSchemaFunction implements Function<RemoteProcessG
         map.put(RemoteProcessGroupSchema.PROXY_PORT_KEY, remoteProcessGroupDTO.getProxyPort());
         map.put(RemoteProcessGroupSchema.PROXY_USER_KEY, remoteProcessGroupDTO.getProxyUser());
         map.put(RemoteProcessGroupSchema.PROXY_PASSWORD_KEY, remoteProcessGroupDTO.getProxyPassword());
-        map.put(RemoteProcessGroupSchema.LOCAL_NETWORK_INTERFACE_KEY, remoteProcessGroupDTO.getLocalNetworkInterface());
         return new RemoteProcessGroupSchema(map);
     }
 }

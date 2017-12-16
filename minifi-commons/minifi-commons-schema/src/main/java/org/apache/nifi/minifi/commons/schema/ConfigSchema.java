@@ -25,7 +25,6 @@ import org.apache.nifi.minifi.commons.schema.common.WritableSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,6 @@ import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.CO
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.CORE_PROPS_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.FLOWFILE_REPO_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.FLOW_CONTROLLER_PROPS_KEY;
-import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.NIFI_PROPERTIES_OVERRIDES_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.PROVENANCE_REPORTING_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.PROVENANCE_REPO_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.SECURITY_PROPS_KEY;
@@ -45,7 +43,6 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
     public static final int CONFIG_VERSION = 3;
     public static final String VERSION = "MiNiFi Config Version";
     public static final String FOUND_THE_FOLLOWING_DUPLICATE_REMOTE_INPUT_PORT_IDS = "Found the following duplicate remote input port ids: ";
-    public static final String FOUND_THE_FOLLOWING_DUPLICATE_REMOTE_OUTPUT_PORT_IDS = "Found the following duplicate remote output port ids: ";
     public static final String FOUND_THE_FOLLOWING_DUPLICATE_INPUT_PORT_IDS = "Found the following duplicate input port ids: ";
     public static final String FOUND_THE_FOLLOWING_DUPLICATE_OUTPUT_PORT_IDS = "Found the following duplicate output port ids: ";
     public static final String FOUND_THE_FOLLOWING_DUPLICATE_IDS = "Found the following ids that occur both in more than one Processor(s), Input Port(s), Output Port(s) and/or Remote Input Port(s): ";
@@ -69,8 +66,6 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
 
     private ProvenanceRepositorySchema provenanceRepositorySchema;
 
-    private Map<String, String> nifiPropertiesOverrides;
-
     public ConfigSchema(Map map) {
         this(map, Collections.emptyList());
     }
@@ -89,11 +84,6 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
         processGroupSchema = new ProcessGroupSchema(map, TOP_LEVEL_NAME);
 
         provenanceReportingProperties = getMapAsType(map, PROVENANCE_REPORTING_KEY, ProvenanceReportingSchema.class, TOP_LEVEL_NAME, false, false);
-
-        nifiPropertiesOverrides = (Map<String, String>) map.get(NIFI_PROPERTIES_OVERRIDES_KEY);
-        if (nifiPropertiesOverrides == null) {
-            nifiPropertiesOverrides = new HashMap<>();
-        }
 
         addIssuesIfNotNull(flowControllerProperties);
         addIssuesIfNotNull(coreProperties);
@@ -115,9 +105,7 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
         List<String> allConnectionIds = allConnectionSchemas.stream().map(ConnectionSchema::getId).collect(Collectors.toList());
         List<String> allRemoteProcessGroupNames = allRemoteProcessGroups.stream().map(RemoteProcessGroupSchema::getName).collect(Collectors.toList());
         List<String> allRemoteInputPortIds = allRemoteProcessGroups.stream().filter(r -> r.getInputPorts() != null)
-                .flatMap(r -> r.getInputPorts().stream()).map(RemotePortSchema::getId).collect(Collectors.toList());
-        List<String> allRemoteOutputPortIds = allRemoteProcessGroups.stream().filter(r -> r.getOutputPorts() != null)
-                .flatMap(r -> r.getOutputPorts().stream()).map(RemotePortSchema::getId).collect(Collectors.toList());
+                .flatMap(r -> r.getInputPorts().stream()).map(RemoteInputPortSchema::getId).collect(Collectors.toList());
         List<String> allInputPortIds = allProcessGroups.stream().flatMap(p -> p.getInputPortSchemas().stream()).map(PortSchema::getId).collect(Collectors.toList());
         List<String> allOutputPortIds = allProcessGroups.stream().flatMap(p -> p.getOutputPortSchemas().stream()).map(PortSchema::getId).collect(Collectors.toList());
 
@@ -127,13 +115,12 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
         checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_CONNECTION_IDS, allConnectionIds);
         checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_REMOTE_PROCESS_GROUP_NAMES, allRemoteProcessGroupNames);
         checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_REMOTE_INPUT_PORT_IDS, allRemoteInputPortIds);
-        checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_REMOTE_OUTPUT_PORT_IDS, allRemoteOutputPortIds);
         checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_INPUT_PORT_IDS, allInputPortIds);
         checkForDuplicates(this::addValidationIssue, FOUND_THE_FOLLOWING_DUPLICATE_OUTPUT_PORT_IDS, allOutputPortIds);
 
         // Potential connection sources and destinations need to have unique ids
-        CollectionOverlap<String> overlapResults = new CollectionOverlap<>(new HashSet<>(allProcessorIds), new HashSet<>(allRemoteInputPortIds), new HashSet<>(allRemoteOutputPortIds),
-                new HashSet<>(allInputPortIds), new HashSet<>(allOutputPortIds), new HashSet<>(allFunnelIds));
+        CollectionOverlap<String> overlapResults = new CollectionOverlap<>(new HashSet<>(allProcessorIds), new HashSet<>(allRemoteInputPortIds), new HashSet<>(allInputPortIds),
+                new HashSet<>(allOutputPortIds), new HashSet<>(allFunnelIds));
         if (overlapResults.getDuplicates().size() > 0) {
             addValidationIssue(FOUND_THE_FOLLOWING_DUPLICATE_IDS + overlapResults.getDuplicates().stream().sorted().collect(Collectors.joining(", ")));
         }
@@ -173,7 +160,6 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
         putIfNotNull(result, SECURITY_PROPS_KEY, securityProperties);
         result.putAll(processGroupSchema.toMap());
         putIfNotNull(result, PROVENANCE_REPORTING_KEY, provenanceReportingProperties);
-        result.put(NIFI_PROPERTIES_OVERRIDES_KEY, nifiPropertiesOverrides);
         return result;
     }
 
@@ -211,10 +197,6 @@ public class ConfigSchema extends BaseSchema implements WritableSchema, Converta
 
     public ProvenanceRepositorySchema getProvenanceRepositorySchema() {
         return provenanceRepositorySchema;
-    }
-
-    public Map<String, String> getNifiPropertiesOverrides() {
-        return nifiPropertiesOverrides;
     }
 
     @Override
