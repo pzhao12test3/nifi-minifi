@@ -23,7 +23,6 @@ Core Properties:
   administrative yield duration: 30 sec
   bored yield duration: 10 millis
   max concurrent threads: 1
-  variable registry properties: ''
 FlowFile Repository:
   partitions: 256
   checkpoint interval: 2 mins
@@ -189,14 +188,12 @@ Process Groups:
       proxy port: ''
       proxy user: ''
       proxy password: ''
-      local network interface: 'en0'
       Input Ports:
       - id: 21a39aba-0158-1000-a1a0-1b55bcddcd72
         name: input2
         comment: ''
         max concurrent tasks: 1
         use compression: false
-      Output Ports: []
   Input Ports:
   - id: 2078c936-0158-1000-0000-000000000000
     name: input
@@ -255,14 +252,12 @@ Process Groups:
     proxy port: ''
     proxy user: ''
     proxy password: ''
-    local network interface: 'en1'
     Input Ports:
     - id: 21a2fb5e-0158-1000-3b5e-5a7d3aaee01b
       name: input
       comment: ''
       max concurrent tasks: 1
       use compression: false
-    Output Ports: []
 Input Ports: []
 Output Ports: []
 Funnels: []
@@ -297,4 +292,3 @@ Connections:
   flowfile expiration: 0 sec
   queue prioritizer class: ''
 Remote Process Groups: []
-NiFi Properties Overrides: {}

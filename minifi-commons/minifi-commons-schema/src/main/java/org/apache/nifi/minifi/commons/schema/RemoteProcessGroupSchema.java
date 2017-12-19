@@ -20,13 +20,11 @@ package org.apache.nifi.minifi.commons.schema;
 import org.apache.nifi.minifi.commons.schema.common.BaseSchemaWithIdAndName;
 import org.apache.nifi.minifi.commons.schema.common.StringUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.COMMENT_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.INPUT_PORTS_KEY;
-import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.OUTPUT_PORTS_KEY;
 import static org.apache.nifi.minifi.commons.schema.common.CommonPropertyKeys.YIELD_PERIOD_KEY;
 
 public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
@@ -38,7 +36,6 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
     public static final String PROXY_PORT_KEY = "proxy port";
     public static final String PROXY_USER_KEY = "proxy user";
     public static final String PROXY_PASSWORD_KEY = "proxy password";
-    public static final String LOCAL_NETWORK_INTERFACE_KEY = "local network interface";
 
     public static final String EXPECTED_PROXY_HOST_IF_PROXY_PORT = "expected " + PROXY_HOST_KEY + " to be set if " + PROXY_PORT_KEY + " is";
     public static final String EXPECTED_PROXY_HOST_IF_PROXY_USER = "expected " + PROXY_HOST_KEY + " to be set if " + PROXY_USER_KEY + " is";
@@ -61,11 +58,9 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
     public static final Integer DEFAULT_PROXY_PORT = null;
     public static final String DEFAULT_PROXY_USER = "";
     public static final String DEFAULT_PROXY_PASSWORD = "";
-    public static final String DEFAULT_NETWORK_INTERFACE = "";
 
     private String url;
-    private List<RemotePortSchema> inputPorts;
-    private List<RemotePortSchema> outputPorts;
+    private List<RemoteInputPortSchema> inputPorts;
 
     private String comment = DEFAULT_COMMENT;
     private String timeout = DEFAULT_TIMEOUT;
@@ -75,21 +70,16 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
     private Integer proxyPort = DEFAULT_PROXY_PORT;
     private String proxyUser = DEFAULT_PROXY_USER;
     private String proxyPassword = DEFAULT_PROXY_PASSWORD;
-    private String localNetworkInterface = DEFAULT_NETWORK_INTERFACE;
 
     public RemoteProcessGroupSchema(Map map) {
         super(map, "RemoteProcessGroup(id: {id}, name: {name})");
         String wrapperName = getWrapperName();
         url = getRequiredKeyAsType(map, URL_KEY, String.class, wrapperName);
-
-        inputPorts = convertListToType(getOptionalKeyAsType(map, INPUT_PORTS_KEY, List.class, wrapperName, new ArrayList<>()), "input port", RemotePortSchema.class, INPUT_PORTS_KEY);
-        addIssuesIfNotNull(inputPorts);
-
-        outputPorts = convertListToType(getOptionalKeyAsType(map, OUTPUT_PORTS_KEY, List.class, wrapperName, new ArrayList<>()), "output port", RemotePortSchema.class, OUTPUT_PORTS_KEY);
-        addIssuesIfNotNull(outputPorts);
-
-        if (inputPorts.size() == 0 && outputPorts.size() == 0) {
-            addValidationIssue("Expected either '" + INPUT_PORTS_KEY + "', '" + OUTPUT_PORTS_KEY + "' in section '" + wrapperName + "' to have value(s)");
+        inputPorts = convertListToType(getRequiredKeyAsType(map, INPUT_PORTS_KEY, List.class, wrapperName), "input port", RemoteInputPortSchema.class, INPUT_PORTS_KEY);
+        if (inputPorts != null) {
+            for (RemoteInputPortSchema remoteInputPortSchema: inputPorts) {
+                addIssuesIfNotNull(remoteInputPortSchema);
+            }
         }
 
         comment = getOptionalKeyAsType(map, COMMENT_KEY, String.class, wrapperName, DEFAULT_COMMENT);
@@ -100,8 +90,6 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
         if (!TransportProtocolOptions.valid(transportProtocol)){
             addValidationIssue(TRANSPORT_PROTOCOL_KEY, wrapperName, "it must be either 'RAW' or 'HTTP' but is '" + transportProtocol + "'");
         }
-
-        localNetworkInterface = getOptionalKeyAsType(map, LOCAL_NETWORK_INTERFACE_KEY, String.class, wrapperName, DEFAULT_NETWORK_INTERFACE);
 
         proxyHost = getOptionalKeyAsType(map, PROXY_HOST_KEY, String.class, wrapperName, DEFAULT_PROXY_HOST);
         proxyPort = getOptionalKeyAsType(map, PROXY_PORT_KEY, Integer.class, wrapperName, DEFAULT_PROXY_PORT);
@@ -126,7 +114,6 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
         } else if (StringUtil.isNullOrEmpty(proxyPassword)) {
             addValidationIssue(PROXY_USER_KEY, wrapperName, EXPECTED_PROXY_PASSWORD_IF_PROXY_USER);
         }
-
     }
 
     @Override
@@ -141,9 +128,7 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
         result.put(PROXY_PORT_KEY, proxyPort == null ? "" : proxyPort);
         result.put(PROXY_USER_KEY, proxyUser);
         result.put(PROXY_PASSWORD_KEY, proxyPassword);
-        result.put(LOCAL_NETWORK_INTERFACE_KEY, localNetworkInterface);
         putListIfNotNull(result, INPUT_PORTS_KEY, inputPorts);
-        putListIfNotNull(result, OUTPUT_PORTS_KEY, outputPorts);
         return result;
     }
 
@@ -163,12 +148,8 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
         return yieldPeriod;
     }
 
-    public List<RemotePortSchema> getInputPorts() {
+    public List<RemoteInputPortSchema> getInputPorts() {
         return inputPorts;
-    }
-
-    public List<RemotePortSchema> getOutputPorts() {
-        return outputPorts;
     }
 
     public String getTransportProtocol() {
@@ -209,13 +190,5 @@ public class RemoteProcessGroupSchema extends BaseSchemaWithIdAndName {
 
     public String getProxyPassword() {
         return proxyPassword;
-    }
-
-    public void setLocalNetworkInterface(String LocalNetworkInterface) {
-        this.localNetworkInterface = LocalNetworkInterface;
-    }
-
-    public String getLocalNetworkInterface() {
-        return localNetworkInterface;
     }
 }

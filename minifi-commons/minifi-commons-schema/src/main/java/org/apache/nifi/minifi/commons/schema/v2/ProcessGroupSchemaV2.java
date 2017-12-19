@@ -23,6 +23,7 @@ import org.apache.nifi.minifi.commons.schema.FunnelSchema;
 import org.apache.nifi.minifi.commons.schema.PortSchema;
 import org.apache.nifi.minifi.commons.schema.ProcessGroupSchema;
 import org.apache.nifi.minifi.commons.schema.ProcessorSchema;
+import org.apache.nifi.minifi.commons.schema.RemoteProcessGroupSchema;
 import org.apache.nifi.minifi.commons.schema.common.BaseSchemaWithIdAndName;
 import org.apache.nifi.minifi.commons.schema.common.ConvertableSchema;
 import org.apache.nifi.minifi.commons.schema.common.StringUtil;
@@ -54,7 +55,7 @@ public class ProcessGroupSchemaV2 extends BaseSchemaWithIdAndName implements Wri
     private List<ProcessorSchema> processors;
     private List<FunnelSchema> funnels;
     private List<ConnectionSchema> connections;
-    private List<RemoteProcessGroupSchemaV2> remoteProcessGroups;
+    private List<RemoteProcessGroupSchema> remoteProcessGroups;
     private List<ProcessGroupSchemaV2> processGroupSchemas;
     private List<PortSchema> inputPortSchemas;
     private List<PortSchema> outputPortSchemas;
@@ -64,7 +65,7 @@ public class ProcessGroupSchemaV2 extends BaseSchemaWithIdAndName implements Wri
 
         processors = getOptionalKeyAsList(map, PROCESSORS_KEY, ProcessorSchema::new, wrapperName);
         funnels = getOptionalKeyAsList(map, FUNNELS_KEY, FunnelSchema::new, wrapperName);
-        remoteProcessGroups = getOptionalKeyAsList(map, REMOTE_PROCESS_GROUPS_KEY, RemoteProcessGroupSchemaV2::new, wrapperName);
+        remoteProcessGroups = getOptionalKeyAsList(map, REMOTE_PROCESS_GROUPS_KEY, RemoteProcessGroupSchema::new, wrapperName);
         connections = getOptionalKeyAsList(map, CONNECTIONS_KEY, ConnectionSchema::new, wrapperName);
         inputPortSchemas = getOptionalKeyAsList(map, INPUT_PORTS_KEY, m -> new PortSchema(m, "InputPort(id: {id}, name: {name})"), wrapperName);
         outputPortSchemas = getOptionalKeyAsList(map, OUTPUT_PORTS_KEY, m -> new PortSchema(m, "OutputPort(id: {id}, name: {name})"), wrapperName);
@@ -108,7 +109,7 @@ public class ProcessGroupSchemaV2 extends BaseSchemaWithIdAndName implements Wri
         putListIfNotNull(result, OUTPUT_PORTS_KEY, outputPortSchemas);
         putListIfNotNull(result, FUNNELS_KEY, funnels);
         putListIfNotNull(result, CONNECTIONS_KEY, connections);
-        putListIfNotNull(result, REMOTE_PROCESS_GROUPS_KEY, remoteProcessGroups.stream().map(RemoteProcessGroupSchemaV2::convert).collect(Collectors.toList()));
+        putListIfNotNull(result, REMOTE_PROCESS_GROUPS_KEY, remoteProcessGroups);
         return result;
     }
 
@@ -124,7 +125,7 @@ public class ProcessGroupSchemaV2 extends BaseSchemaWithIdAndName implements Wri
         return connections;
     }
 
-    public List<RemoteProcessGroupSchemaV2> getRemoteProcessGroups() {
+    public List<RemoteProcessGroupSchema> getRemoteProcessGroups() {
         return remoteProcessGroups;
     }
 
