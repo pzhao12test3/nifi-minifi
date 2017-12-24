@@ -18,7 +18,6 @@
 package org.apache.nifi.minifi.bootstrap.configuration.ingestors;
 
 import okhttp3.Call;
-import okhttp3.Credentials;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -28,7 +27,6 @@ import org.apache.nifi.minifi.bootstrap.ConfigurationFileHolder;
 import org.apache.nifi.minifi.bootstrap.configuration.ConfigurationChangeNotifier;
 import org.apache.nifi.minifi.bootstrap.configuration.differentiators.WholeConfigDifferentiator;
 import org.apache.nifi.minifi.bootstrap.configuration.differentiators.interfaces.Differentiator;
-import org.apache.nifi.minifi.commons.schema.common.StringUtil;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -38,9 +36,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -76,11 +71,6 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
     public static final String PORT_KEY = PULL_HTTP_BASE_KEY + ".port";
     public static final String HOST_KEY = PULL_HTTP_BASE_KEY + ".hostname";
     public static final String PATH_KEY = PULL_HTTP_BASE_KEY + ".path";
-    public static final String QUERY_KEY = PULL_HTTP_BASE_KEY + ".query";
-    public static final String PROXY_HOST_KEY = PULL_HTTP_BASE_KEY + ".proxy.hostname";
-    public static final String PROXY_PORT_KEY = PULL_HTTP_BASE_KEY + ".proxy.port";
-    public static final String PROXY_USERNAME = PULL_HTTP_BASE_KEY + ".proxy.username";
-    public static final String PROXY_PASSWORD = PULL_HTTP_BASE_KEY + ".proxy.password";
     public static final String TRUSTSTORE_LOCATION_KEY = PULL_HTTP_BASE_KEY + ".truststore.location";
     public static final String TRUSTSTORE_PASSWORD_KEY = PULL_HTTP_BASE_KEY + ".truststore.password";
     public static final String TRUSTSTORE_TYPE_KEY = PULL_HTTP_BASE_KEY + ".truststore.type";
@@ -96,7 +86,6 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
     private final AtomicReference<Integer> portReference = new AtomicReference<>();
     private final AtomicReference<String> hostReference = new AtomicReference<>();
     private final AtomicReference<String> pathReference = new AtomicReference<>();
-    private final AtomicReference<String> queryReference = new AtomicReference<>();
     private volatile Differentiator<ByteBuffer> differentiator;
     private volatile String connectionScheme;
     private volatile String lastEtag = "";
@@ -121,7 +110,6 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
         }
 
         final String path = properties.getProperty(PATH_KEY, "/");
-        final String query = properties.getProperty(QUERY_KEY, "");
 
         final String portString = (String) properties.get(PORT_KEY);
         final Integer port;
@@ -134,7 +122,6 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
         portReference.set(port);
         hostReference.set(host);
         pathReference.set(path);
-        queryReference.set(query);
 
         final String useEtagString = (String) properties.getOrDefault(USE_ETAG_KEY, "false");
         if ("true".equalsIgnoreCase(useEtagString) || "false".equalsIgnoreCase(useEtagString)){
@@ -154,23 +141,6 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
 
         // Set whether to follow redirects
         okHttpClientBuilder.followRedirects(true);
-
-        String proxyHost = properties.getProperty(PROXY_HOST_KEY, "");
-        if (!proxyHost.isEmpty()) {
-            String proxyPort = properties.getProperty(PROXY_PORT_KEY);
-            if (proxyPort == null || proxyPort.isEmpty()) {
-                throw new IllegalArgumentException("Proxy port required if proxy specified.");
-            }
-            okHttpClientBuilder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))));
-            String proxyUsername = properties.getProperty(PROXY_USERNAME);
-            if (proxyUsername != null) {
-                String proxyPassword = properties.getProperty(PROXY_PASSWORD);
-                if (proxyPassword == null) {
-                    throw new IllegalArgumentException("Must specify proxy password with proxy username.");
-                }
-                okHttpClientBuilder.proxyAuthenticator((route, response) -> response.request().newBuilder().addHeader("Proxy-Authorization", Credentials.basic(proxyUsername, proxyPassword)).build());
-            }
-        }
 
         // check if the ssl path is set and add the factory if so
         if (properties.containsKey(KEYSTORE_LOCATION_KEY)) {
@@ -205,15 +175,10 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
     public void run() {
         try {
             logger.debug("Attempting to pull new config");
-            HttpUrl.Builder builder = new HttpUrl.Builder()
+            final HttpUrl url = new HttpUrl.Builder()
                     .host(hostReference.get())
                     .port(portReference.get())
-                    .encodedPath(pathReference.get());
-            String query = queryReference.get();
-            if (!StringUtil.isNullOrEmpty(query)) {
-                builder = builder.encodedQuery(query);
-            }
-            final HttpUrl url = builder
+                    .encodedPath(pathReference.get())
                     .scheme(connectionScheme)
                     .build();
 
@@ -235,14 +200,8 @@ public class PullHttpChangeIngestor extends AbstractPullChangeIngestor {
 
             logger.debug("Response received: {}", response.toString());
 
-            int code = response.code();
-
-            if (code == NOT_MODIFIED_STATUS_CODE) {
+            if (response.code() == NOT_MODIFIED_STATUS_CODE) {
                 return;
-            }
-
-            if (code >= 400) {
-                throw new IOException("Got response code " + code + " while trying to pull configuration: " + response.body().string());
             }
 
             ResponseBody body = response.body();
